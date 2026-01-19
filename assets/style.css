@@ -30,3 +30,6 @@ main{display:none}
 #shopPanel{display:none}
 #stats{display:none}
 
+/* affordability state */
+.unaffordable{opacity:0.55}
+

@@ -84,7 +84,7 @@ function renderShopPanel() {
     } else {
       node.innerHTML = `<div><strong>${it.name}</strong></div><div class="hudSmall">DMG ${it.dmg} • FR ${it.fireRate.toFixed(2)} • RNG ${it.range}</div><div class="price">$${it.price}</div>`;
       const btn = document.createElement('button'); btn.className='btnSmall'; btn.textContent = `Buy ($${it.price})`;
-      btn.disabled = (game.gold < it.price) || !game.running;
+      if (game.gold < it.price || !game.running) btn.classList.add('unaffordable');
       btn.addEventListener('click', ()=> buyWeapon(idx));
       node.appendChild(btn);
     }
@@ -317,49 +317,11 @@ function generateWeapon(level) {
 }
 
 function openShop() {
-  // only open shop when in a started game
+  // Persistent shop lives on the left panel; ensure player knows where to buy
   if (!game.running) { flash('Start the game first'); return; }
-  // ensure only one shop overlay exists
-  const prev = document.getElementById('__shopOverlay'); if (prev) prev.remove();
-  // generate multiple shop items
-  shopItems = [generateWeapon(game.level), generateWeapon(game.level), generateWeapon(game.level)];
-  // show shop overlay inside canvas area
-  const arenaDiv = document.getElementById('arena');
-  // simple DOM overlay: replace canvas with text temporarily
-  // We'll draw UI below canvas instead: use prompt-like approach
-  // build HTML for multiple items
-  let html = '<div class="shop">';
-  shopItems.forEach((it, idx) => {
-    html += `\n      <div class="shopItem" style="margin-bottom:8px;">`;
-    html += `<div><strong>${it.name}</strong></div>`;
-    html += `<div>DMG +${it.dmg}  FR ${it.fireRate.toFixed(2)}  RNG ${it.range}</div>`;
-    html += `<div>Price $${it.price}</div>`;
-    html += `<div><button data-buy-index="${idx}" class="buyItem btnSmall">Buy</button></div>`;
-    html += `</div>`;
-  });
-  html += `\n  <div><button id="leaveShop">Leave</button></div></div>`;
-  // temporarily draw shop text over canvas using a small DOM node
-  const shopNode = document.createElement('div');
-  shopNode.id='__shopOverlay'; shopNode.className='shop';
-  shopNode.style.position='absolute';
-  // position relative to canvas on screen
-  const r = canvas.getBoundingClientRect();
-  shopNode.style.left = (window.scrollX + r.left + 16) + 'px';
-  shopNode.style.top = (window.scrollY + r.top + 16) + 'px';
-  shopNode.style.background = '#111'; shopNode.style.padding = '12px'; shopNode.style.border = '1px solid #333'; shopNode.style.borderRadius = '6px';
-  shopNode.style.zIndex = 9999;
-  shopNode.innerHTML = html;
-  document.body.appendChild(shopNode);
-  // attach handlers scoped to overlay
-  const buyBtns = shopNode.querySelectorAll('.buyItem');
-  buyBtns.forEach(b => {
-    b.addEventListener('click', (ev) => {
-      const idx = Number(b.getAttribute('data-buy-index'));
-      buyWeapon(idx, shopNode);
-    });
-  });
-  const leaveBtn = shopNode.querySelector('#leaveShop');
-  if (leaveBtn) leaveBtn.addEventListener('click', () => { if (shopNode) shopNode.remove(); shopItems = null; });
+  flash('Use the Shop panel on the left to buy items.');
+  // render current shop state
+  renderShopPanel();
 }
 
 function buyWeapon(index, shopNode) {
@@ -367,6 +329,7 @@ function buyWeapon(index, shopNode) {
   const item = shopItems[index];
   if (!item) { flash('No item'); return; }
   if (game.gold >= item.price) {
+    console.log('Attempting buyWeapon idx=', index, 'price=', item.price, 'gold=', game.gold);
     game.gold -= item.price;
     game.player.weapon = {type: item.type, name: item.name, dmg: item.dmg, fireRate: item.fireRate, bulletSpeed: item.bulletSpeed, range: item.range, upgrades:{dmg:0,fire:0,range:0}};
     // mark slot as sold until restock
@@ -381,6 +344,7 @@ function buyUpgrade(target) {
   // target: 'dmg'|'range'|'fire'
   try {
     const cost = getUpgradeCost(target);
+    console.log('Attempting upgrade', target, 'gold=', game.gold, 'cost=', cost);
     if (!Number.isFinite(cost)) { console.error('bad cost', target, cost); flash('Upgrade error'); return; }
     if (game.gold < cost) { flash('Not enough gold'); return; }
     game.gold -= cost;
