@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Arena to the Gods</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header>
+    <h1>Arena to the Gods</h1>
+  </header>
+
+  <div class="container">
+  <section id="setup">
+    <label>Name: <input id="nameInput" placeholder="Enter your champion"></label>
+    <div id="classSelect">
+      <button data-class="Warrior">Warrior</button>
+      <button data-class="Ranger">Ranger</button>
+      <button data-class="Mage">Mage</button>
+    </div>
+    <button id="startBtn">Start Game</button>
+  </section>
+
+  <nav>
+    <button id="shopBtn">Shop</button>
+    <button id="resumeBtn">Resume Arena</button>
+    <button id="saveBtn">Save Now</button>
+  </nav>
+
+  <main>
+    <canvas id="arena" width="800" height="480">Your browser does not support canvas.</canvas>
+    <aside id="stats">
+      <h3>Stats</h3>
+      <div id="statArea"></div>
+      <h4>Upgrades</h4>
+      <div id="upgradesArea"></div>
+    </aside>
+  </main>
+
+  </div>
+
+  <script src="assets/script.js"></script>
+</body>
+</html>
