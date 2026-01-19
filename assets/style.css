@@ -1,13 +1,18 @@
-body{font-family:Inter,Segoe UI,Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#0a0a10 0%, #08080b 100%);color:#e9eef8;margin:0;padding:24px;display:flex;align-items:center;justify-content:center;min-height:100vh}
+body{font-family:Inter,Segoe UI,Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#0a0a10 0%, #08080b 100%);color:#e9eef8;margin:0;padding:24px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh}
 *{box-sizing:border-box}
 /* card */
 .container{width:1000px;max-width:96vw;background:linear-gradient(180deg,#0f1220, #0b0b12);border-radius:10px;padding:18px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
-header{display:block;text-align:center;margin-bottom:6px}
+header{display:block;text-align:center;position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:50}
 header h1{margin:0;font-size:28px;letter-spacing:1px;color:#bfe0ff;font-weight:800}
+.container{margin-top:78px}
 #setup{margin:8px 0 14px;display:flex;gap:12px;align-items:center}
 #classSelect button.sel{outline:2px solid #6cf}
 #arena{background:#07070b;border-radius:6px;border:1px solid #222;display:block;max-width:100%;}
 main{display:flex;gap:14px;margin-top:12px;align-items:flex-start}
+#shopPanel{width:240px;background:linear-gradient(180deg,#0c0c10,#070708);padding:12px;border-radius:6px;border:1px solid #222}
+#shopPanel h3{margin:0 0 8px}
+#shopItems .shopItem{padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg,#0e1620,#0b0f14);margin-bottom:8px}
+#shopItems .shopItem .price{color:#ffd27f;font-weight:700}
 #stats{width:280px;background:linear-gradient(180deg,#0b0b0f,#07070b);padding:12px;border-radius:6px;border:1px solid #222}
 button{margin:4px;padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg,#1b2430,#0f161d);color:#eaf6ff;cursor:pointer}
 button:hover{filter:brightness(1.08)}
@@ -18,4 +23,10 @@ button:hover{filter:brightness(1.08)}
 /* shop overlay */
 #__shopOverlay{z-index:40}
 #__shopOverlay .shop{min-width:220px}
+
+/* hide main parts until playing */
+main{display:none}
+#arena{display:none}
+#shopPanel{display:none}
+#stats{display:none}
 

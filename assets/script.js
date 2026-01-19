@@ -28,6 +28,7 @@ let game = {
 };
 
 let shopItems = null;
+let restockInterval = null;
 
 function saveGame() { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); }
 function loadGame() {
@@ -40,7 +41,6 @@ function init() {
   canvas = document.getElementById('arena');
   ctx = canvas.getContext('2d');
   document.getElementById('startBtn').addEventListener('click', startFromSetup);
-  document.getElementById('shopBtn').addEventListener('click', openShop);
   document.getElementById('resumeBtn').addEventListener('click', resumeArena);
   document.getElementById('saveBtn').addEventListener('click', () => { saveGame(); flash('Saved'); });
   const rangeToggle = document.createElement('button');
@@ -67,6 +67,76 @@ function init() {
   }
   // draw initial state even before starting
   render();
+  // show start menu initially
+  setUIForPlay(false);
+}
+
+// Shop rendering and restock
+function renderShopPanel() {
+  const panel = document.getElementById('shopItems');
+  if (!panel) return;
+  panel.innerHTML = '';
+  if (!shopItems) return;
+  shopItems.forEach((it, idx) => {
+    const node = document.createElement('div'); node.className = 'shopItem';
+    if (!it) {
+      node.innerHTML = `<div style="opacity:0.6">SOLD</div>`;
+    } else {
+      node.innerHTML = `<div><strong>${it.name}</strong></div><div class="hudSmall">DMG ${it.dmg} • FR ${it.fireRate.toFixed(2)} • RNG ${it.range}</div><div class="price">$${it.price}</div>`;
+      const btn = document.createElement('button'); btn.className='btnSmall'; btn.textContent = `Buy ($${it.price})`;
+      btn.disabled = (game.gold < it.price) || !game.running;
+      btn.addEventListener('click', ()=> buyWeapon(idx));
+      node.appendChild(btn);
+    }
+    panel.appendChild(node);
+  });
+}
+
+function restockShop() {
+  if (!shopItems) shopItems = [];
+  for (let i=0;i<3;i++) {
+    if (!shopItems[i]) shopItems[i] = generateWeapon(game.level + Math.floor(Math.random()*2));
+  }
+  renderShopPanel();
+}
+
+function gotoStartMenu() {
+  // stop game and return to setup
+  game.running = false; clearInterval(tickInterval);
+  // reset some transient state
+  game.enemies = []; game.bullets = [];
+  // reset player basic hp but keep name/class in setup
+  game.player.hp = game.player.maxHp || 50;
+  // hide in-game UI
+  setUIForPlay(false);
+  if (restockInterval) { clearInterval(restockInterval); restockInterval = null; }
+  shopItems = null;
+  render(); updateUI();
+}
+
+// Toggle UI for start menu vs in-game
+function setUIForPlay(isPlaying) {
+  const nav = document.querySelector('nav');
+  const stats = document.getElementById('stats');
+  const setup = document.getElementById('setup');
+  const mainEl = document.querySelector('main');
+  if (isPlaying) {
+    // hide setup, show nav, stats and arena
+    setup.style.display = 'none';
+    nav.style.display = 'flex';
+    stats.style.display = 'block';
+    mainEl.style.display = 'flex';
+    document.getElementById('resumeBtn').style.display = 'inline-block';
+    // show canvas
+    const canv = document.getElementById('arena'); if (canv) canv.style.display = 'block';
+  } else {
+    setup.style.display = 'flex';
+    nav.style.display = 'none';
+    stats.style.display = 'none';
+    mainEl.style.display = 'none';
+    document.getElementById('resumeBtn').style.display = 'none';
+    const canv = document.getElementById('arena'); if (canv) canv.style.display = 'none';
+  }
 }
 
 function startFromSetup() {
@@ -85,6 +155,12 @@ function startFromSetup() {
   // reset upgrades and upgrade levels (so prices start fresh)
   game.player.upgrades = { dmgMult: 1, range: 0, fireRate: 1 };
   game.player.upgradeLevels = { dmg: 0, range: 0, fire: 0 };
+  setUIForPlay(true);
+  // initialize shop and start restock timer
+  shopItems = [null,null,null];
+  restockShop();
+  if (restockInterval) clearInterval(restockInterval);
+  restockInterval = setInterval(restockShop, 180000);
   startLoop(); updateUI(); saveGame();
 }
 
@@ -96,7 +172,36 @@ function makeBaseWeapon(cls) {
 }
 
 function startLoop() { if (tickInterval) clearInterval(tickInterval); tickInterval = setInterval(gameTick, 1000/30); }
-function resumeArena() { game.running = true; startLoop(); }
+function resumeArena() {
+  game.running = true; setUIForPlay(true);
+  // ensure shop active
+  if (!shopItems) { shopItems = [null,null,null]; restockShop(); }
+  if (!restockInterval) restockInterval = setInterval(restockShop, 180000);
+  startLoop();
+}
+
+function showGameOver() {
+  // stop loop
+  game.running = false; clearInterval(tickInterval);
+  // remove any shop overlay
+  const prev = document.getElementById('__shopOverlay'); if (prev) prev.remove();
+  // create overlay with stats and back-to-start
+  const r = canvas.getBoundingClientRect();
+  const ov = document.createElement('div'); ov.id = '__gameOver';
+  ov.style.position = 'absolute'; ov.style.left = (window.scrollX + r.left + 40) + 'px'; ov.style.top = (window.scrollY + r.top + 40) + 'px';
+  ov.style.background = 'rgba(6,8,12,0.95)'; ov.style.color = '#fff'; ov.style.padding = '16px'; ov.style.border = '1px solid #333'; ov.style.borderRadius = '8px'; ov.style.zIndex = 10000; ov.style.minWidth = '260px';
+  ov.innerHTML = `
+    <div style="font-weight:700;font-size:18px;margin-bottom:8px;">DEFEATED</div>
+    <div>Waves survived: ${game.wave}</div>
+    <div>Gold: ${game.gold}</div>
+    <div style="margin-top:8px;"><button id="backToStart">Back to Start</button> <button id="tryAgain">Restart</button></div>
+  `;
+  document.body.appendChild(ov);
+  document.getElementById('backToStart').addEventListener('click', () => { if (ov) ov.remove(); gotoStartMenu(); });
+  document.getElementById('tryAgain').addEventListener('click', () => { if (ov) ov.remove(); startFromSetup(); });
+  if (restockInterval) { clearInterval(restockInterval); restockInterval = null; }
+}
+
 
 function gameTick() {
   if (!game.running) return;
@@ -138,7 +243,7 @@ function updateEnemies(dt) {
     if (dist <= e.r + pR) {
       game.player.hp -= Math.max(1, Math.floor(game.wave/2));
       game.enemies.splice(i,1);
-      if (game.player.hp <= 0) { game.running = false; clearInterval(tickInterval); }
+      if (game.player.hp <= 0) { game.player.hp = 0; showGameOver(); }
     }
   }
 }
@@ -207,6 +312,8 @@ function generateWeapon(level) {
 }
 
 function openShop() {
+  // only open shop when in a started game
+  if (!game.running) { flash('Start the game first'); return; }
   // ensure only one shop overlay exists
   const prev = document.getElementById('__shopOverlay'); if (prev) prev.remove();
   // generate multiple shop items
@@ -253,11 +360,13 @@ function openShop() {
 function buyWeapon(index, shopNode) {
   if (!shopItems || shopItems.length <= index) return;
   const item = shopItems[index];
+  if (!item) { flash('No item'); return; }
   if (game.gold >= item.price) {
     game.gold -= item.price;
     game.player.weapon = {type: item.type, name: item.name, dmg: item.dmg, fireRate: item.fireRate, bulletSpeed: item.bulletSpeed, range: item.range, upgrades:{dmg:0,fire:0,range:0}};
-    if (shopNode) shopNode.remove();
-    shopItems = null; flash('Weapon bought'); updateUI(); saveGame();
+    // mark slot as sold until restock
+    shopItems[index] = null;
+    flash('Weapon bought'); updateUI(); renderShopPanel(); saveGame();
   } else {
     flash('Not enough gold');
   }
@@ -352,6 +461,8 @@ function updateUI() {
   document.getElementById('upDmg').disabled = (game.gold < dmgCost);
   document.getElementById('upRange').disabled = (game.gold < rangeCost);
   document.getElementById('upFire').disabled = (game.gold < fireCost);
+  // update shop panel buttons state when visible
+  if (game.running) renderShopPanel();
 }
 
 function flash(msg) { const prev = document.getElementById('arena'); ctx.save(); ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(10,10,220,30); ctx.fillStyle='#fff'; ctx.font='14px Arial'; ctx.fillText(msg, 18, 32); ctx.restore(); setTimeout(()=>render(),700); }
