@@ -129,6 +129,10 @@ function setUIForPlay(isPlaying) {
     document.getElementById('resumeBtn').style.display = 'inline-block';
     // show canvas
     const canv = document.getElementById('arena'); if (canv) canv.style.display = 'block';
+    // show shop panel
+    const shopPanel = document.getElementById('shopPanel'); if (shopPanel) shopPanel.style.display = 'block';
+    // render initial shop state
+    renderShopPanel();
   } else {
     setup.style.display = 'flex';
     nav.style.display = 'none';
@@ -136,6 +140,7 @@ function setUIForPlay(isPlaying) {
     mainEl.style.display = 'none';
     document.getElementById('resumeBtn').style.display = 'none';
     const canv = document.getElementById('arena'); if (canv) canv.style.display = 'none';
+    const shopPanel = document.getElementById('shopPanel'); if (shopPanel) shopPanel.style.display = 'none';
   }
 }
 
@@ -374,9 +379,11 @@ function buyWeapon(index, shopNode) {
 
 function buyUpgrade(target) {
   // target: 'dmg'|'range'|'fire'
-  const cost = getUpgradeCost(target);
-  if (game.gold < cost) { flash('Not enough gold'); return; }
-  game.gold -= cost;
+  try {
+    const cost = getUpgradeCost(target);
+    if (!Number.isFinite(cost)) { console.error('bad cost', target, cost); flash('Upgrade error'); return; }
+    if (game.gold < cost) { flash('Not enough gold'); return; }
+    game.gold -= cost;
   // increment level and apply stat increases per level
   if (target === 'dmg') {
     game.player.upgradeLevels.dmg = (game.player.upgradeLevels.dmg || 0) + 1;
@@ -391,7 +398,11 @@ function buyUpgrade(target) {
     game.player.upgradeLevels.fire = (game.player.upgradeLevels.fire || 0) + 1;
     game.player.upgrades.fireRate = +(1 * Math.pow(1.15, game.player.upgradeLevels.fire)).toFixed(2);
   }
-  flash('Upgrade applied'); updateUI(); saveGame();
+    flash('Upgrade applied'); updateUI(); saveGame();
+  } catch (err) {
+    console.error('buyUpgrade failed', err);
+    flash('Upgrade failed');
+  }
 }
 
 function getUpgradeCost(target) {
@@ -454,13 +465,17 @@ function updateUI() {
     <div>Fire rate mult: x${(game.player.upgrades.fireRate||1).toFixed(2)} <span class="hudSmall">(next: $${fireCost})</span></div>
     <div style="margin-top:6px;"><button id="upDmg" class="btnSmall">Buy +DMG ($${dmgCost})</button> <button id="upRange" class="btnSmall">Buy +Range ($${rangeCost})</button> <button id="upFire" class="btnSmall">Buy +Fire ($${fireCost})</button></div>
   `;
-  document.getElementById('upDmg').addEventListener('click', ()=>buyUpgrade('dmg'));
-  document.getElementById('upRange').addEventListener('click', ()=>buyUpgrade('range'));
-  document.getElementById('upFire').addEventListener('click', ()=>buyUpgrade('fire'));
+  // attach onclick (replace previous) to avoid duplicate listeners
+  const upDmgEl = document.getElementById('upDmg');
+  const upRangeEl = document.getElementById('upRange');
+  const upFireEl = document.getElementById('upFire');
+  if (upDmgEl) upDmgEl.onclick = () => buyUpgrade('dmg');
+  if (upRangeEl) upRangeEl.onclick = () => buyUpgrade('range');
+  if (upFireEl) upFireEl.onclick = () => buyUpgrade('fire');
   // disable buttons when unaffordable
-  document.getElementById('upDmg').disabled = (game.gold < dmgCost);
-  document.getElementById('upRange').disabled = (game.gold < rangeCost);
-  document.getElementById('upFire').disabled = (game.gold < fireCost);
+  if (upDmgEl) upDmgEl.disabled = (game.gold < dmgCost);
+  if (upRangeEl) upRangeEl.disabled = (game.gold < rangeCost);
+  if (upFireEl) upFireEl.disabled = (game.gold < fireCost);
   // update shop panel buttons state when visible
   if (game.running) renderShopPanel();
 }
